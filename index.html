@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DekPlayZone Ultimate V3</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Kanit:wght@300;500&display=swap" rel="stylesheet" />
+<style>
+    :root { --neon: #38bdf8; --success: #22c55e; --danger: #ef4444; --bg: #020617; }
+    *{margin:0;padding:0;box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+    body{ background: radial-gradient(circle at top,#0f172a, var(--bg)); color: white; height: 100vh; overflow: hidden; font-family: 'Kanit', sans-serif; }
+    .orbitron { font-family: 'Orbitron', sans-serif; }
+    
+    /* UI Layout */
+    .start{position:fixed;inset:0;display:flex;justify-content:center;align-items:center;z-index:1000;background:var(--bg);}
+    .start-card{ background:rgba(15,23,42,0.95); padding:40px; border-radius:25px; text-align:center; border: 2px solid var(--neon); box-shadow:0 0 40px rgba(56,189,248,0.4); width: 90%; max-width: 400px; }
+    #menu{display:none; height:100vh; flex-direction:column; justify-content:center; align-items:center; gap:15px;}
+    .game-btn{ width:280px; padding:15px; border-radius:12px; background:#0f172a; color:white; border:2px solid var(--neon); font-size:18px; cursor:pointer; transition: 0.2s; box-shadow: 0 4px 0 var(--neon); }
+    .game-btn:active { transform: translateY(4px); box-shadow: none; }
+    .game-btn:hover:not(:active) { background: var(--neon); color: black; }
+
+    /* Game Scene */
+    .game{display:none; text-align:center; padding:20px; height:100vh; overflow-y: auto;}
+    .back{position:fixed; top:20px; left:20px; padding:10px 15px; border-radius:8px; background:var(--danger); color:white; border:none; cursor:pointer; z-index:100;}
+    
+    /* Memory Grid */
+    .grid{display:grid; gap:10px; justify-content:center; margin: 20px auto; user-select: none;}
+    .card{ width:70px; height:70px; background:#1e293b; font-size:30px; display:flex; justify-content:center; align-items:center; border-radius:10px; cursor:pointer; transition: 0.3s; }
+    .card.flipped{ background:var(--neon); color: black; }
+
+    /* Leaderboard */
+    #leaderboard{ position:fixed; top:20px; right:20px; background:rgba(15,23,42,0.85); padding:15px; border-radius:15px; border:1px solid var(--neon); width:180px; z-index:50; }
+    #scoreList { font-size: 14px; list-style-position: inside; margin-top: 10px;}
+
+    input, select { padding:12px; font-size:18px; border-radius:10px; border:2px solid #334155; width:100%; max-width:250px; margin-bottom:15px; background:#1e293b; color:white; text-align:center; outline:none; }
+    input:focus { border-color: var(--neon); }
+</style>
+</head>
+<body>
+
+<audio id="click" src="https://www.soundjay.com/buttons/sounds/button-16.mp3"></audio>
+<audio id="correct" src="https://www.soundjay.com/buttons/sounds/button-3.mp3"></audio>
+<audio id="bgm" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_8f76d7c1f7.mp3" loop></audio>
+
+<div id="leaderboard">
+    <h3 class="orbitron">🏆 TOP 5</h3>
+    <ol id="scoreList"></ol>
+    <p style="font-size: 12px; margin-top: 5px; color: var(--neon);">รวม: <span id="currentTotal">0</span></p>
+</div>
+
+<div class="start" id="start">
+    <div class="start-card">
+        <h1 class="orbitron" style="color:var(--neon); margin-bottom:20px;">DEKPLAYZONE</h1>
+        <input type="text" id="playerName" placeholder="ชื่อของคุณ..." maxlength="10">
+        <button class="game-btn orbitron" style="background:var(--success); border:none;" onclick="startGame()">START</button>
+    </div>
+</div>
+
+<div id="menu">
+    <h2 id="welcomeText" class="orbitron" style="margin-bottom:20px;">READY?</h2>
+    <button class="game-btn" onclick="openGame('memory')">🧠 จับคู่ภาพ</button>
+    <button class="game-btn" onclick="openGame('number')">🔢 ทายตัวเลข</button>
+    <button class="game-btn" onclick="openGame('vocab')">📘 เติมคำศัพท์</button>
+    <button class="game-btn" onclick="openGame('math')">➕ คำนวณเร็ว</button>
+    <button class="game-btn" onclick="toggleSound()">🔊 เปิด/ปิดเสียง</button>
+</div>
+
+<div class="game" id="memory">
+    <button class="back" onclick="backMenu()">⬅ เมนู</button>
+    <h2 class="orbitron">MEMORY</h2>
+    <div style="margin: 15px 0;">
+        <select id="level" onchange="initMemory()" style="width: auto;">
+            <option value="4">Easy (4x4)</option>
+            <option value="6">Hard (6x6)</option>
+        </select>
+        <span> | เวลา: <span id="timeM">0</span>s </span>
+    </div>
+    <div class="grid" id="grid"></div>
+</div>
+
+<div class="game" id="number">
+    <button class="back" onclick="backMenu()">⬅ เมนู</button>
+    <h2 class="orbitron">GUESS NUMBER</h2>
+    <p id="numInfo" style="margin:20px 0;">ทายเลข 1-100 (<span id="numTries">10</span> ครั้ง)</p>
+    <input type="number" id="numGuess">
+    <br><button class="game-btn" onclick="checkNumber()">ทาย!</button>
+    <p id="numResult" style="margin-top:20px; color:var(--neon);"></p>
+</div>
+
+<div class="game" id="vocab">
+    <button class="back" onclick="backMenu()">⬅ เมนู</button>
+    <h2 class="orbitron">VOCABULARY</h2>
+    <div id="wordQ" style="margin:40px 0; font-size:45px; color:var(--neon);"></div>
+    <input type="text" id="wordA" placeholder="English...">
+    <p id="wordR" style="margin-top:10px;"></p>
+    <button class="game-btn" onclick="checkWord()">ตรวจ</button>
+</div>
+
+<div class="game" id="math">
+    <button class="back" onclick="backMenu()">⬅ เมนู</button>
+    <h2 class="orbitron">QUICK MATH</h2>
+    <div id="mathSetup" style="margin:30px 0;">
+        <p>ตั้งค่าเวลาเล่น:</p>
+        <select id="mathTimeLimit">
+            <option value="15">15 วินาที</option>
+            <option value="30" selected>30 วินาที</option>
+            <option value="60">60 วินาที</option>
+        </select><br>
+        <button class="game-btn" onclick="startMathChallenge()">เริ่มท้าทาย!</button>
+    </div>
+    <div id="mathPlayArea" style="display:none;">
+        <p>เวลาเหลือ: <span id="mathTimerDisplay" style="color:var(--neon); font-size:24px;">0</span>s</p>
+        <div id="mathQ" style="margin:30px 0; font-size:60px;" class="orbitron"></div>
+        <input type="number" id="mathA">
+        <p id="mathR" style="margin-top:10px;"></p>
+        <button class="game-btn" onclick="checkMath()">ตอบ</button>
+    </div>
+</div>
+
+<script>
+/* --- CORE --- */
+let currentPlayer = "", totalScore = 0, soundEnabled = true, activeTimer = null;
+const sounds = { click: document.getElementById("click"), correct: document.getElementById("correct"), bgm: document.getElementById("bgm") };
+
+function play(s) { if(soundEnabled) { s.currentTime = 0; s.play().catch(()=>{}); } }
+function stopAllTimers() { if(activeTimer) clearInterval(activeTimer); }
+
+function startGame() {
+    const name = document.getElementById("playerName").value.trim();
+    if(!name) return alert("กรุณาใส่ชื่อ!");
+    currentPlayer = name;
+    document.getElementById("start").style.display = "none";
+    document.getElementById("menu").style.display = "flex";
+    document.getElementById("welcomeText").textContent = `สวัสดีคุณ ${currentPlayer}!`;
+    sounds.bgm.volume = 0.2; play(sounds.bgm); renderLeaderboard();
+}
+
+function openGame(id) {
+    play(sounds.click); stopAllTimers();
+    document.getElementById("menu").style.display = "none";
+    document.querySelectorAll(".game").forEach(g => g.style.display = "none");
+    document.getElementById(id).style.display = "block";
+    window["init" + id.charAt(0).toUpperCase() + id.slice(1)]();
+}
+
+function backMenu() {
+    play(sounds.click); stopAllTimers();
+    document.querySelectorAll(".game").forEach(g => g.style.display = "none");
+    document.getElementById("menu").style.display = "flex";
+    updateLeaderboard(totalScore);
+}
+
+function toggleSound() { soundEnabled = !soundEnabled; if(!soundEnabled) sounds.bgm.pause(); else sounds.bgm.play(); }
+
+/* --- STORAGE --- */
+function updateLeaderboard(score) {
+    let board = JSON.parse(localStorage.getItem("dekplay_v3")) || [];
+    let idx = board.findIndex(u => u.name === currentPlayer);
+    if(idx > -1) { if(score > board[idx].score) board[idx].score = score; }
+    else board.push({name: currentPlayer, score: score});
+    board.sort((a,b) => b.score - a.score);
+    localStorage.setItem("dekplay_v3", JSON.stringify(board.slice(0, 5)));
+    renderLeaderboard();
+}
+function renderLeaderboard() {
+    let board = JSON.parse(localStorage.getItem("dekplay_v3")) || [];
+    document.getElementById("scoreList").innerHTML = board.map(u => `<li>${u.name}: ${u.score}</li>`).join('');
+    document.getElementById("currentTotal").textContent = totalScore;
+}
+
+/* --- [1] MEMORY --- */
+let firstCard, secondCard, lockBoard, mTime;
+function initMemory() {
+    stopAllTimers(); mTime = 0; lockBoard = false; firstCard = null; secondCard = null;
+    let size = parseInt(document.getElementById("level").value);
+    let totalCards = size * size;
+    let icons = ["🐶","🐱","🐭","🐰","🦊","🐻","🐼","🐸","🐯","🦁","🐮","🐷","🐔","🐵","🐙","🦄","🍎","🍌","🍒","🍇"].slice(0, totalCards/2);
+    let cards = [...icons, ...icons].sort(() => Math.random() - 0.5);
+    const grid = document.getElementById("grid");
+    grid.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+    grid.style.width = size === 4 ? "320px" : "460px";
+    grid.innerHTML = "";
+    cards.forEach(val => {
+        const c = document.createElement("div");
+        c.className = "card"; c.dataset.icon = val;
+        c.onclick = function() {
+            if(lockBoard || this === firstCard || this.classList.contains("flipped")) return;
+            this.textContent = val; this.classList.add("flipped");
+            if(!firstCard) { firstCard = this; return; }
+            secondCard = this; lockBoard = true;
+            if(firstCard.dataset.icon === secondCard.dataset.icon) {
+                play(sounds.correct); totalScore += 10; updateLeaderboard(totalScore);
+                firstCard = null; secondCard = null; lockBoard = false;
+                if(document.querySelectorAll(".flipped").length === totalCards) { stopAllTimers(); setTimeout(()=>alert("ชนะแล้ว!"), 200); }
+            } else {
+                setTimeout(() => { firstCard.textContent = ""; secondCard.textContent = ""; firstCard.classList.remove("flipped"); secondCard.classList.remove("flipped"); firstCard = null; secondCard = null; lockBoard = false; }, 800);
+            }
+        };
+        grid.appendChild(c);
+    });
+    activeTimer = setInterval(() => { mTime++; document.getElementById("timeM").textContent = mTime; }, 1000);
+}
+
+/* --- [2] NUMBER --- */
+let secret, tries;
+function initNumber() {
+    secret = Math.floor(Math.random() * 100) + 1; tries = 10;
+    document.getElementById("numTries").textContent = tries;
+    document.getElementById("numResult").textContent = "";
+    document.getElementById("numGuess").value = "";
+    document.getElementById("numGuess").focus();
+}
+function checkNumber() {
+    let g = parseInt(document.getElementById("numGuess").value); if(isNaN(g)) return;
+    tries--; document.getElementById("numTries").textContent = tries;
+    if(g === secret) { play(sounds.correct); totalScore += 50; updateLeaderboard(totalScore); alert("ถูกต้อง! +50"); initNumber(); }
+    else if(tries <= 0) { alert("เลขคือ " + secret); initNumber(); }
+    else document.getElementById("numResult").textContent = g < secret ? "↑ มากกว่านี้" : "↓ น้อยกว่านี้";
+    document.getElementById("numGuess").value = "";
+}
+
+/* --- [3] VOCAB --- */
+const vocabs = [{th:"แมว",en:"cat"},{th:"หมา",en:"dog"},{th:"ปลา",en:"fish"},{th:"นก",en:"bird"},{th:"กล้วย",en:"banana"}];
+let curV;
+function initVocab() {
+    curV = vocabs[Math.floor(Math.random() * vocabs.length)];
+    document.getElementById("wordQ").textContent = curV.th;
+    document.getElementById("wordA").value = ""; document.getElementById("wordR").textContent = "";
+    document.getElementById("wordA").focus();
+}
+function checkWord() {
+    if(document.getElementById("wordA").value.trim().toLowerCase() === curV.en) {
+        play(sounds.correct); totalScore += 20; updateLeaderboard(totalScore);
+        document.getElementById("wordR").textContent = "✅ ถูกต้อง!"; setTimeout(initVocab, 800);
+    } else document.getElementById("wordR").textContent = "❌ ลองใหม่";
+}
+
+/* --- [4] MATH (TIMER SETUP VERSION) --- */
+let mathAns, mathTimeLeft, mathRoundScore;
+function initMath() {
+    document.getElementById("mathSetup").style.display = "block";
+    document.getElementById("mathPlayArea").style.display = "none";
+}
+function startMathChallenge() {
+    play(sounds.click); mathRoundScore = 0;
+    mathTimeLeft = parseInt(document.getElementById("mathTimeLimit").value);
+    document.getElementById("mathSetup").style.display = "none";
+    document.getElementById("mathPlayArea").style.display = "block";
+    genMath();
+    activeTimer = setInterval(() => {
+        mathTimeLeft--; document.getElementById("mathTimerDisplay").textContent = mathTimeLeft;
+        if(mathTimeLeft <= 0) { stopAllTimers(); alert(`จบเกม! รอบนี้ได้: ${mathRoundScore}`); initMath(); }
+    }, 1000);
+}
+function genMath() {
+    let a = Math.floor(Math.random()*12)+1, b = Math.floor(Math.random()*12)+1, op = ["+","-","*"][Math.floor(Math.random()*3)];
+    if(op==="-" && a<b) [a,b] = [b,a];
+    mathAns = eval(`${a}${op}${b}`);
+    document.getElementById("mathQ").textContent = `${a} ${op.replace('*','×')} ${b}`;
+    document.getElementById("mathA").value = ""; document.getElementById("mathA").focus();
+}
+function checkMath() {
+    if(parseInt(document.getElementById("mathA").value) === mathAns) {
+        play(sounds.correct); totalScore += 15; mathRoundScore += 15;
+        updateLeaderboard(totalScore); genMath();
+    }
+}
+
+/* --- GLOBAL ENTER KEY --- */
+document.addEventListener("keypress", (e) => {
+    if(e.key === "Enter") {
+        const id = document.querySelector(".game[style*='display: block']")?.id;
+        if(id === "number") checkNumber();
+        if(id === "vocab") checkWord();
+        if(id === "math") checkMath();
+    }
+});
+</script>
+</body>
+</html>
